@@ -652,11 +652,21 @@ class MainHook : IXposedHookLoadPackage {
                 // 4. Collapse bottom spacers dw4 and xt7 across all tabs (Home + Friends) so content flows to screen bottom
                 val decorW = decorView.width
                 val decorH = decorView.height
+                val spacerLoc = IntArray(2)
+                fun isSpacerLike(v: View): Boolean {
+                    if (v is ViewGroup && v.childCount > 0) return false
+                    if (v is TextView || v is ImageView) return false
+                    if (v.height !in 40..320) return false
+                    if (decorW > 0 && v.width in 1 until decorW / 2) return false
+                    if (decorH > 0) {
+                        v.getLocationOnScreen(spacerLoc)
+                        if (spacerLoc[1] < decorH - 360) return false
+                    }
+                    return true
+                }
                 fun collapseAllById(root: View, targetId: Int) {
                     if (targetId == 0) return
-                    if (root.id == targetId && root.javaClass == View::class.java &&
-                        (decorW <= 0 || root.width >= decorW / 2) && root.height in 60..220
-                    ) {
+                    if (root.id == targetId && isSpacerLike(root)) {
                         if (root.visibility != View.GONE) root.visibility = View.GONE
                         val lp = root.layoutParams
                         if (lp != null && lp.height != 0) {
@@ -693,7 +703,10 @@ class MainHook : IXposedHookLoadPackage {
                 if (decorW > 0 && decorH > 0) {
                     val tmpLoc = IntArray(2)
                     fun collapseBottomSpacers(root: View) {
-                        if (root.javaClass == View::class.java &&
+                        if (root !is ViewGroup &&
+                            root !is TextView &&
+                            root !is ImageView &&
+                            !root.isClickable &&
                             root.visibility == View.VISIBLE &&
                             root.width >= decorW / 2 &&
                             root.height in 80..220
